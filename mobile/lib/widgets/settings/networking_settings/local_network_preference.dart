@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -53,18 +55,20 @@ class LocalNetworkPreference extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wifiNameText = useState("");
+    final wifiEntries = useState(<String>[]);
     final localEndpointText = useState("");
 
     useEffect(
       () {
-        final wifiName = ref.read(authProvider.notifier).getSavedWifiName();
+        final jsonWifiNameList =
+            ref.read(authProvider.notifier).getWifiNameList();
+        if (jsonWifiNameList != null) {
+          final List<dynamic> jsonList = jsonDecode(jsonWifiNameList);
+          wifiEntries.value = jsonList.map((e) => e.toString()).toList();
+        }
+
         final localEndpoint =
             ref.read(authProvider.notifier).getSavedLocalEndpoint();
-
-        if (wifiName != null) {
-          wifiNameText.value = wifiName;
-        }
 
         if (localEndpoint != null) {
           localEndpointText.value = localEndpoint;
@@ -75,9 +79,23 @@ class LocalNetworkPreference extends HookConsumerWidget {
       [],
     );
 
-    saveWifiName(String wifiName) {
-      wifiNameText.value = wifiName;
-      return ref.read(authProvider.notifier).saveWifiName(wifiName);
+    saveWifiList() {
+      final jsonWifiNameList = jsonEncode(wifiEntries.value);
+      return ref.read(authProvider.notifier).saveWifiNameList(jsonWifiNameList);
+    }
+
+    saveWifiName(String wifiName, int index) {
+      if (index >= 0) {
+        wifiEntries.value = [
+          ...wifiEntries.value..replaceRange(index, index + 1, [wifiName]),
+        ];
+      } else {
+        wifiEntries.value = [
+          ...wifiEntries.value,
+          wifiName,
+        ];
+      }
+      return saveWifiList();
     }
 
     saveLocalEndpoint(String url) {
@@ -85,17 +103,23 @@ class LocalNetworkPreference extends HookConsumerWidget {
       return ref.read(authProvider.notifier).saveLocalEndpoint(url);
     }
 
-    handleEditWifiName() async {
+    handleEditWifiName(int index) async {
+      final int finalIndex = index;
       final wifiName = await _showEditDialog(
         context,
         "wifi_name".tr(),
         "your_wifi_name".tr(),
-        wifiNameText.value,
+        wifiEntries.value[index],
       );
 
       if (wifiName != null) {
-        await saveWifiName(wifiName);
+        await saveWifiName(wifiName, finalIndex);
       }
+    }
+
+    handleDeleteWifiName(int index) async {
+      wifiEntries.value = [...wifiEntries.value..removeAt(index)];
+      await saveWifiList();
     }
 
     handleEditServerEndpoint() async {
@@ -127,8 +151,9 @@ class LocalNetworkPreference extends HookConsumerWidget {
             backgroundColor: context.colorScheme.secondary,
           ),
         );
+        saveWifiName("", -1);
       } else {
-        saveWifiName(wifiName);
+        saveWifiName(wifiName, -1);
       }
 
       final serverEndpoint =
@@ -137,6 +162,36 @@ class LocalNetworkPreference extends HookConsumerWidget {
       if (serverEndpoint != null) {
         saveLocalEndpoint(serverEndpoint);
       }
+    }
+
+    Widget proxyDecorator(
+      Widget child,
+      int index,
+      Animation<double> animation,
+    ) {
+      return AnimatedBuilder(
+        animation: animation,
+        builder: (BuildContext context, Widget? child) {
+          return Material(
+            color: context.colorScheme.surfaceContainerHighest,
+            shadowColor: context.colorScheme.primary.withOpacity(0.2),
+            child: child,
+          );
+        },
+        child: child,
+      );
+    }
+
+    handleReorder(int oldIndex, int newIndex) {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+
+      final entry = wifiEntries.value.removeAt(oldIndex);
+      wifiEntries.value.insert(newIndex, entry);
+      wifiEntries.value = [...wifiEntries.value];
+
+      saveWifiList();
     }
 
     return Padding(
@@ -180,30 +235,73 @@ class LocalNetworkPreference extends HookConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Divider(
-                      color: context.colorScheme.surfaceContainerHighest,
-                    ),
-                    ListTile(
-                      enabled: enabled,
-                      contentPadding: const EdgeInsets.only(left: 24, right: 8),
-                      leading: const Icon(Icons.wifi_rounded),
-                      title: Text("wifi_name".tr()),
-                      subtitle: wifiNameText.value.isEmpty
-                          ? Text("enter_wifi_name".tr())
-                          : Text(
-                              wifiNameText.value,
-                              style: context.textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: enabled
-                                    ? context.primaryColor
-                                    : context.colorScheme.onSurface
-                                        .withAlpha(100),
-                                fontFamily: 'Inconsolata',
-                              ),
+                    Divider(color: context.colorScheme.surfaceContainerHighest),
+                    Form(
+                      key: GlobalKey<FormState>(),
+                      child: ReorderableListView.builder(
+                        buildDefaultDragHandles: false,
+                        proxyDecorator: proxyDecorator,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: wifiEntries.value.length,
+                        onReorder: handleReorder,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            key: Key(index.toString()),
+                            enabled: enabled,
+                            contentPadding:
+                                const EdgeInsets.only(left: 24, right: 8),
+                            leading: const Icon(Icons.wifi_rounded),
+                            title: Text("wifi_name".tr()),
+                            subtitle: wifiEntries.value[index].isEmpty
+                                ? Text("enter_wifi_name".tr())
+                                : Text(
+                                    wifiEntries.value[index],
+                                    style:
+                                        context.textTheme.labelLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: enabled
+                                          ? context.primaryColor
+                                          : context.colorScheme.onSurface
+                                              .withAlpha(100),
+                                      fontFamily: 'Inconsolata',
+                                    ),
+                                  ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: enabled
+                                      ? () => handleEditWifiName(index)
+                                      : null,
+                                  icon: const Icon(Icons.edit_rounded),
+                                ),
+                                IconButton(
+                                  onPressed: enabled
+                                      ? () => handleDeleteWifiName(index)
+                                      : null,
+                                  icon: const Icon(Icons.delete_outlined),
+                                ),
+                              ],
                             ),
-                      trailing: IconButton(
-                        onPressed: enabled ? handleEditWifiName : null,
-                        icon: const Icon(Icons.edit_rounded),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.add),
+                          label:
+                              Text('add_current_wifi_name'.tr().toUpperCase()),
+                          onPressed: enabled
+                              ? () {
+                                  autofillCurrentNetwork();
+                                }
+                              : null,
+                        ),
                       ),
                     ),
                     ListTile(
@@ -227,21 +325,6 @@ class LocalNetworkPreference extends HookConsumerWidget {
                       trailing: IconButton(
                         onPressed: enabled ? handleEditServerEndpoint : null,
                         icon: const Icon(Icons.edit_rounded),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                      ),
-                      child: SizedBox(
-                        height: 48,
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.wifi_find_rounded),
-                          label:
-                              Text('use_current_connection'.tr().toUpperCase()),
-                          onPressed: enabled ? autofillCurrentNetwork : null,
-                        ),
                       ),
                     ),
                   ],

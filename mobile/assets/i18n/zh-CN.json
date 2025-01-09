@@ -8,6 +8,7 @@
   "action_common_update": "更新",
   "add_a_name": "添加姓名",
   "add_endpoint": "添加服务接口",
+  "add_current_wifi_name": "添加当前Wifi名称",
   "add_to_album_bottom_sheet_added": "添加到 {album}",
   "add_to_album_bottom_sheet_already_exists": "已在 {album} 中",
   "advanced_settings_log_level_title": "日志等级：{}",

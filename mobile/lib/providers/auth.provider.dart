@@ -177,6 +177,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return Store.put(StoreKey.preferredWifiName, wifiName);
   }
 
+  Future<void> saveWifiNameList(String jsonWifiNameList) {
+    return Store.put(StoreKey.preferredWifiNameList, jsonWifiNameList);
+  }
+
+  String? getWifiNameList() {
+    return Store.tryGet(StoreKey.preferredWifiNameList);
+  }
+
   Future<void> saveLocalEndpoint(String url) {
     return Store.put(StoreKey.localEndpoint, url);
   }

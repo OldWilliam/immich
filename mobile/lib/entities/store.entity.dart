@@ -242,6 +242,7 @@ enum StoreKey<T> {
   preferredWifiName<String>(133, type: String),
   localEndpoint<String>(134, type: String),
   externalEndpointList<String>(135, type: String),
+  preferredWifiNameList<String>(136, type: String),
   ;
 
   const StoreKey(
