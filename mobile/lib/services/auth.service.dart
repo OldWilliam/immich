@@ -144,9 +144,10 @@ class AuthService {
 
     final wifiName = await _networkService.getWifiName();
     final savedWifiName = _authRepository.getPreferredWifiName();
+    final savedWifiNameList = _authRepository.getPreferredWifiNameList();
     String? endpoint;
 
-    if (wifiName == savedWifiName) {
+    if (savedWifiNameList.contains(wifiName)) {
       endpoint = await _setLocalConnection();
     }
 

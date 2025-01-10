@@ -6,6 +6,7 @@ abstract interface class IAuthRepository implements IDatabaseRepository {
   String getAccessToken();
   bool getEndpointSwitchingFeature();
   String? getPreferredWifiName();
+  List<String> getPreferredWifiNameList();
   String? getLocalEndpoint();
   List<AuxilaryEndpoint> getExternalEndpointList();
 }

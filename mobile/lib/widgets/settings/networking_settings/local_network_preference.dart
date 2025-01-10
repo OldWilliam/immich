@@ -63,8 +63,7 @@ class LocalNetworkPreference extends HookConsumerWidget {
         final jsonWifiNameList =
             ref.read(authProvider.notifier).getWifiNameList();
         if (jsonWifiNameList != null) {
-          final List<dynamic> jsonList = jsonDecode(jsonWifiNameList);
-          wifiEntries.value = jsonList.map((e) => e.toString()).toList();
+          wifiEntries.value = jsonDecode(jsonWifiNameList);
         }
 
         final localEndpoint =

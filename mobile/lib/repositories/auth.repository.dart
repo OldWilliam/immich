@@ -48,6 +48,16 @@ class AuthRepository extends DatabaseRepository implements IAuthRepository {
   }
 
   @override
+  List<String> getPreferredWifiNameList() {
+    var jsonWifiNameList = Store.tryGet(StoreKey.preferredWifiNameList);
+    if (jsonWifiNameList == null) {
+      return [];
+    }
+    final List<String> wifiNameList = jsonDecode(jsonWifiNameList);
+    return wifiNameList;
+  }
+
+  @override
   String? getLocalEndpoint() {
     return Store.tryGet(StoreKey.localEndpoint);
   }
